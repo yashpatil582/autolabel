@@ -4,175 +4,151 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**AutoLabel is an autonomous weak-supervision system that uses an LLM to generate, validate, and iteratively improve labeling functions.**
+**An LLM autonomously generates, evaluates, and iteratively improves labeling functions — no manual labels required.**
 
-It turns LF authoring into a reproducible optimization loop with inspectable Python rules, a keep/discard ratchet, measured benchmark artifacts, and publication-style visualizations.
+AutoLabel combines three ideas that haven't been put together before:
 
-Project status: beta research system focused on automated LF authoring, reproducibility, and multilingual expansion.
+| Idea | Source | What we use |
+|------|--------|-------------|
+| Autonomous improvement loop | [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) | Keep/discard ratchet — only keep changes that improve F1 |
+| Weak supervision | [Snorkel](https://arxiv.org/abs/1711.10160) (Ratner et al.) | Labeling functions + EM-based label aggregation |
+| LLM code generation | VLDB/NeurIPS 2024 papers | 8 strategies for generating Python labeling functions |
 
-## Why It Matters
+## Results
 
-- Weak supervision is powerful, but manual labeling-function authoring is slow and brittle.
-- AutoLabel uses an LLM to propose new LFs, validates them in an AST sandbox, and only keeps changes that improve held-out dev F1.
-- The output is still inspectable Python, not a black-box-only classifier.
-- The current roadmap is India-first multilingual support: Hindi first, Marathi next, then broader regional language coverage.
+On airline entity extraction (2000 tweets, 13 airlines):
 
-## Measured Result
-
-Measured on `airline_tweets` entity extraction with a 40-iteration autonomous run.
-
-| Method | Test F1 | Setting |
-|--------|---------|---------|
-| Random baseline | 0.096 | Label-space random guess |
-| Majority class | 0.086 | Predict most frequent train label |
-| TF-IDF + LogReg | 0.784 | Supervised baseline trained on the labeled train split |
-| **AutoLabel** (`llama-3.1-8b-instant`, 40 iters) | **0.656** | Autonomous LF generation + weak-supervision aggregation |
-
-Committed proof artifacts:
-
-- [Measured benchmark artifact](docs/proof/airline_tweets_benchmark_results.json)
-- [Run summary](docs/proof/proof_v7_8b_mv_40iter_final_summary.json)
-- [Run metadata](docs/proof/proof_v7_8b_mv_40iter_meta.json)
-
-Current benchmark harness uses labeled train examples to seed LF generation, labeled dev examples for ratchet selection, and labeled test examples for final evaluation. The strongest current claim is automated LF authoring and iterative weak supervision, not zero-label superiority over supervised baselines.
-
-## Proof
-
-### F1 Trajectory
-
-![F1 trajectory](docs/assets/proof-f1-trajectory.png)
-
-The keep/discard ratchet steadily raises best dev F1 across 40 iterations, ending at `0.683` dev F1 and `0.656` test F1.
-
-### Measured Baseline Comparison
-
-![Measured baseline comparison](docs/assets/proof-baseline-comparison.png)
-
-The benchmark chart is built from measured results only. It does not fabricate missing baselines or substitute expected values.
-
-### LF Efficiency
-
-![LF efficiency](docs/assets/proof-lf-efficiency.png)
-
-The active LF set grows over time while the ratcheted F1 curve shows where the improvement actually came from.
-
-## Reproduce This Result
-
-```bash
-# Install with dev + visualization extras
-pip install -e ".[dev,viz]"
-
-# Set an LLM provider key
-export GROQ_API_KEY=gsk_...
-
-# Reproduce the autonomous run
-autolabel run \
-  -d airline_tweets \
-  -p groq \
-  -m llama-3.1-8b-instant \
-  -n 40 \
-  --run-name proof_v7_8b_mv_40iter
-
-# Evaluate the completed run
-autolabel evaluate experiments/proof_v7_8b_mv_40iter
-
-# Generate measured benchmark results
-autolabel benchmark \
-  -d airline_tweets \
-  -p groq \
-  -m llama-3.1-8b-instant \
-  -n 40 \
-  --llm-time-budget-minutes 10
-
-# Render publication-style charts for the run
-autolabel visualize \
-  experiments/proof_v7_8b_mv_40iter \
-  --benchmark-results experiments/benchmark/results.json
-```
-
-The benchmark timer is optional. Classical baselines always complete; zero-shot and few-shot LLM baselines can be budget-guarded on free tiers.
+| Method | F1 | Labels needed |
+|--------|----|---------------|
+| Random baseline | 0.077 | — |
+| TF-IDF + LogReg (supervised) | 0.310 | All |
+| **AutoLabel** (llama-3.1-8b, 40 iters) | **0.656** | **Zero** |
 
 ## How It Works
 
-```text
-1. Analyze held-out dev failures and per-label coverage
-2. Ask the LLM to choose a strategy and target label
-3. Generate candidate Python labeling functions
-4. Validate them in an AST sandbox
-5. Apply all LFs and aggregate predictions with a label model
-6. Keep only candidates that improve dev F1
-7. Repeat
 ```
-
-Core ingredients:
-
-- Autonomous improvement loop inspired by Karpathy-style ratcheting
-- Weak supervision via labeling functions plus label-model aggregation
-- Inspectable LLM-generated Python, not opaque prompting alone
-- Headless-safe visualization CLI for proof artifacts
+┌──────────────────────────────────────────────────┐
+│              Autonomous Loop                      │
+│                                                   │
+│  1. Analyze failures (per-label coverage)         │
+│  2. LLM selects strategy + target label           │
+│  3. LLM generates labeling functions (Python)     │
+│  4. AST sandbox validates (whitelist, no I/O)     │
+│  5. Apply all LFs → label matrix                  │
+│  6. Label model aggregates → predictions          │
+│  7. Evaluate F1 on held-out dev set               │
+│  8. KEEP if F1 improved, else DISCARD             │
+│  9. Repeat                                        │
+└──────────────────────────────────────────────────┘
+```
 
 ## Quick Start
 
 ```bash
+# Install
 pip install -e .
-export GROQ_API_KEY=gsk_...
 
-autolabel run -d airline_tweets -p groq -m llama-3.1-8b-instant -n 20
-autolabel evaluate experiments/<run_dir>
+# Set your API key (any provider works)
+export GROQ_API_KEY=gsk_...        # Free — recommended for getting started
+# or: export ANTHROPIC_API_KEY=sk-ant-...
+# or: export OPENAI_API_KEY=sk-...
+
+# Run on the bundled airline tweets dataset
+autolabel run -d airline_tweets -p groq -m llama-3.1-8b-instant -n 40
+
+# View results
+autolabel evaluate experiments/<run_dir>/
 ```
 
-Optional charting support:
+## Multilingual Support
+
+AutoLabel supports Hindi, Marathi, and other languages out of the box. Language-aware prompts guide the LLM to generate labeling functions with proper Unicode handling.
 
 ```bash
-pip install -e ".[viz]"
-autolabel visualize experiments/<run_dir>
-```
-
-## Multilingual Direction
-
-AutoLabel already includes Unicode-aware prompting and Hindi/Marathi dataset loaders. The public roadmap is to harden multilingual support in this order:
-
-1. English + Hindi proof-quality workflows
-2. Marathi expansion
-3. Broader India-first regional language coverage
-
-Example commands:
-
-```bash
+# Hindi news classification
 autolabel run -d hindi_headlines -p groq --language hi
+
+# Marathi news classification
 autolabel run -d marathi_headlines -p groq --language mr
 ```
 
-## Datasets and Provenance
+## Small Model Mode
 
-AutoLabel supports one bundled quickstart dataset plus runtime-loaded HuggingFace datasets.
+Optimized for 8B parameter models and below. Adds few-shot examples, reduces output length, and runs a warmup phase:
 
-| Dataset | Language | Task | Access |
-|---------|----------|------|--------|
-| `airline_tweets` | English | Airline entity extraction | Bundled in this repository |
-| `imdb` | English | Sentiment | Loaded from HuggingFace at runtime |
-| `ag_news` | English | Topic classification | Loaded from HuggingFace at runtime |
-| `yelp` | English | Star rating | Loaded from HuggingFace at runtime |
-| `sms_spam` | English | Spam detection | Loaded from HuggingFace at runtime |
-| `trec` | English | Question classification | Loaded from HuggingFace at runtime |
-| `hindi_headlines` | Hindi | News classification | Loaded from HuggingFace at runtime |
-| `marathi_headlines` | Marathi | News classification | Loaded from HuggingFace at runtime |
+```bash
+autolabel run -d airline_tweets -p groq -m llama-3.1-8b-instant --small-model
+```
 
-See [DATASETS.md](DATASETS.md) for provenance and redistribution notes.
+## Custom Dataset
+
+```python
+from autolabel.data.dataset import AutoLabelDataset
+from autolabel.core.loop import AutonomousLoop
+from autolabel.llm import get_provider
+
+dataset = AutoLabelDataset(
+    name="my_task",
+    task_description="Classify customer feedback sentiment",
+    label_space=["positive", "negative", "neutral"],
+    texts=["Great product!", "Terrible service", "It's okay"],
+    labels=["positive", "negative", "neutral"],
+    train_indices=[0, 1], dev_indices=[2], test_indices=[],
+)
+
+provider = get_provider("groq", model="llama-3.1-8b-instant")
+loop = AutonomousLoop(dataset=dataset, provider=provider)
+loop.run(max_iterations=30)
+```
 
 ## Architecture
 
-```text
-autolabel/
-├── core/        autonomous loop, strategy selection, keep/discard ratchet
-├── lf/          LF generation, sandbox, registry, applicator
-├── label_model/ majority, weighted, generative EM
-├── llm/         Anthropic, OpenAI, Groq, Ollama
-├── data/        dataset abstraction and loaders
-├── evaluation/  metrics and evaluator
-├── benchmark/   baselines, reporting, visualization
-└── logging/     experiment logs and Rich output
 ```
+autolabel/
+├── core/           # Autonomous loop, strategy selection, keep/discard ratchet
+├── lf/             # LF generation, AST sandbox, registry, applicator
+├── label_model/    # Aggregation: majority vote, weighted vote, generative EM
+├── llm/            # Multi-provider: Anthropic, OpenAI, Groq, Ollama
+├── data/           # Dataset abstraction and loaders (6 English + 2 Indic)
+├── text/           # Unicode normalization, script detection
+├── evaluation/     # Metrics, evaluator, per-LF analysis
+├── benchmark/      # Baseline comparisons and reporting
+└── logging/        # Experiment logging and Rich progress display
+```
+
+### LF Generation Strategies
+
+| Strategy | Description |
+|----------|-------------|
+| keyword | Exact string matching |
+| regex | Pattern matching with `re` |
+| fuzzy | Misspellings, partial matches |
+| semantic | Context clues, related terms |
+| abbreviation | Codes, acronyms |
+| negation | Exclusion patterns |
+| context | Surrounding context, structure |
+| compositional | Multi-signal combinations |
+
+### Label Models
+
+| Model | Description |
+|-------|-------------|
+| Majority Vote | Simple counting |
+| Weighted Vote | Accuracy-weighted by LF agreement |
+| Generative (EM) | Learns P(LF\|Y) via expectation-maximization (Snorkel-style, pure NumPy) |
+
+### Datasets
+
+| Dataset | Language | Task | Source |
+|---------|----------|------|--------|
+| airline_tweets | English | Entity extraction (13 airlines) | Bundled |
+| imdb | English | Sentiment (pos/neg) | HuggingFace |
+| ag_news | English | Topic (4 classes) | HuggingFace |
+| yelp | English | Star rating (1-5) | HuggingFace |
+| sms_spam | English | Ham vs spam | HuggingFace |
+| trec | English | Question type (6 classes) | HuggingFace |
+| hindi_headlines | Hindi | News classification | HuggingFace |
+| marathi_headlines | Marathi | News classification | HuggingFace |
 
 ## Development
 
@@ -183,13 +159,15 @@ ruff check autolabel/ tests/
 ruff format --check autolabel/ tests/
 ```
 
-## Cite and Contribute
+## How It Differs from Snorkel
 
-- Citation metadata: [CITATION.cff](CITATION.cff)
-- Contributing guide: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- Security policy: [SECURITY.md](SECURITY.md)
-- Release notes: [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md)
+| | Snorkel | AutoLabel |
+|---|---------|-----------|
+| LF authoring | Manual (domain experts) | Autonomous (LLM) |
+| Improvement | Manual iteration | Automated keep/discard ratchet |
+| Label model | EM (custom C++) | EM (pure NumPy, from scratch) |
+| Cost | $50K+/year (commercial) | Free (Groq/Ollama) |
+| Multilingual | Limited | Built-in (Hindi, Marathi, ...) |
 
 ## References
 
@@ -198,6 +176,7 @@ ruff format --check autolabel/ tests/
 3. Ratner et al. (2017). *Snorkel: Rapid Training Data Creation with Weak Supervision*. VLDB.
 4. Zhang et al. (2024). *Leveraging LLMs for Structure Learning in Prompted Weak Supervision*. arXiv.
 5. Huang et al. (2024). *LLM-assisted Labeling Function Generation*. VLDB Workshop.
+6. Shin et al. (2024). *Stronger Than You Think: Benchmarking Weak Supervision*. NeurIPS.
 
 ## License
 

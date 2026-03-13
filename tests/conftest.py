@@ -14,7 +14,6 @@ from autolabel.llm.base import BaseLLMProvider, LLMResponse
 # Mock LLM Provider
 # ---------------------------------------------------------------------------
 
-
 class MockLLMProvider(BaseLLMProvider):
     """Deterministic LLM provider for testing."""
 
@@ -29,7 +28,6 @@ class MockLLMProvider(BaseLLMProvider):
         system: str = "",
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        request_timeout_seconds: float | None = None,
     ) -> LLMResponse:
         text = self._responses[self._call_idx % len(self._responses)]
         self._call_idx += 1
@@ -45,7 +43,6 @@ class MockLLMProvider(BaseLLMProvider):
 # ---------------------------------------------------------------------------
 # Sample dataset
 # ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def sample_dataset() -> AutoLabelDataset:
@@ -65,18 +62,10 @@ def sample_dataset() -> AutoLabelDataset:
         "Air Canada cancelled my connection",
     ]
     labels = [
-        "Delta Air Lines",
-        "Delta Air Lines",
-        "Delta Air Lines",
-        "United Airlines",
-        "United Airlines",
-        "United Airlines",
-        "Air Canada",
-        "Air Canada",
-        "Air Canada",
-        "Delta Air Lines",
-        "United Airlines",
-        "Air Canada",
+        "Delta Air Lines", "Delta Air Lines", "Delta Air Lines",
+        "United Airlines", "United Airlines", "United Airlines",
+        "Air Canada", "Air Canada", "Air Canada",
+        "Delta Air Lines", "United Airlines", "Air Canada",
     ]
     return AutoLabelDataset(
         name="test_airlines",
@@ -93,15 +82,13 @@ def sample_dataset() -> AutoLabelDataset:
 @pytest.fixture
 def sample_label_matrix() -> np.ndarray:
     """5 samples, 3 LFs, 3 classes. -1 = abstain."""
-    return np.array(
-        [
-            [0, 0, -1],  # two votes for class 0
-            [1, -1, 1],  # two votes for class 1
-            [2, 2, 2],  # unanimous class 2
-            [-1, 0, 1],  # conflict
-            [-1, -1, -1],  # no coverage
-        ]
-    )
+    return np.array([
+        [0,  0, -1],  # two votes for class 0
+        [1, -1,  1],  # two votes for class 1
+        [2,  2,  2],  # unanimous class 2
+        [-1, 0,  1],  # conflict
+        [-1, -1, -1], # no coverage
+    ])
 
 
 @pytest.fixture

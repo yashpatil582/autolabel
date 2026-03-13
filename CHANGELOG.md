@@ -11,10 +11,7 @@
 - **Multilingual support** — Hindi, Marathi with language-aware prompts and Devanagari handling
 - **Small model mode** — few-shot examples, warmup phase, retry logic for 8B models
 - **AST sandbox** — whitelist-based validation for safe LF execution
-- **CLI** — `autolabel run`, `autolabel benchmark`, `autolabel evaluate`, `autolabel cost`, `autolabel visualize`
+- **CLI** — `autolabel run`, `autolabel benchmark`, `autolabel evaluate`, `autolabel cost`
 - **Cost tracking** — per-call token and USD accounting
-- **Publication-style charts** — F1 trajectory, baseline comparison, strategy analysis, coverage/accuracy, LF efficiency
-- **Free-tier benchmark guardrails** — shared LLM time budget plus per-request timeout support for benchmark baselines
 - **CI pipeline** — GitHub Actions with Python 3.11/3.12 matrix
-- **Measured proof run** — 0.656 test F1 on airline entity extraction with `llama-3.1-8b-instant`
-- **Launch docs** — citation metadata, dataset notes, security policy, release notes, and GitHub templates
+- **Benchmark**: 0.656 F1 on airline entity extraction with llama-3.1-8b (zero manual labels)

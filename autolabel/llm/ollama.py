@@ -22,7 +22,6 @@ class OllamaProvider(BaseLLMProvider):
         system: str = "",
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        request_timeout_seconds: float | None = None,
     ) -> LLMResponse:
         """Generate a completion via the Ollama chat API.
 
@@ -45,9 +44,7 @@ class OllamaProvider(BaseLLMProvider):
             "num_predict": max_tokens,
         }
 
-        client = ollama.Client(timeout=request_timeout_seconds) if request_timeout_seconds else None
-        chat = client.chat if client is not None else ollama.chat
-        response = chat(
+        response = ollama.chat(
             model=self.model,
             messages=messages,
             options=options,

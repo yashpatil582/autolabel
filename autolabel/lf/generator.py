@@ -237,8 +237,8 @@ class LFGenerator:
         if language_supplement:
             language_supplement = "\n" + language_supplement + "\n"
 
-        # Few-shot examples (always included — reduces parsing failures for all models)
-        few_shot_section = FEW_SHOT_EXAMPLES
+        # Few-shot examples (always for small model mode, available in template)
+        few_shot_section = FEW_SHOT_EXAMPLES if self.small_model_mode else ""
 
         return template.format(
             task_description=self.task_description,

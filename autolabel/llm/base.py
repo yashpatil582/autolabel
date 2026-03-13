@@ -31,7 +31,6 @@ class BaseLLMProvider(ABC):
         system: str = "",
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        request_timeout_seconds: float | None = None,
     ) -> LLMResponse:
         """Generate a completion from the LLM.
 
@@ -40,7 +39,6 @@ class BaseLLMProvider(ABC):
             system: An optional system prompt.
             temperature: Sampling temperature (0.0 - 1.0).
             max_tokens: Maximum number of tokens to generate.
-            request_timeout_seconds: Optional per-request timeout.
 
         Returns:
             An LLMResponse containing the generated text and usage metadata.
@@ -51,7 +49,6 @@ class BaseLLMProvider(ABC):
         prompt: str,
         system: str = "",
         temperature: float = 0.0,
-        request_timeout_seconds: float | None = None,
     ) -> LLMResponse:
         """Generate a deterministic completion suitable for structured output.
 
@@ -62,7 +59,6 @@ class BaseLLMProvider(ABC):
             prompt: The user prompt to send.
             system: An optional system prompt.
             temperature: Sampling temperature (defaults to 0.0).
-            request_timeout_seconds: Optional per-request timeout.
 
         Returns:
             An LLMResponse containing the generated text and usage metadata.
@@ -71,5 +67,4 @@ class BaseLLMProvider(ABC):
             prompt=prompt,
             system=system,
             temperature=temperature,
-            request_timeout_seconds=request_timeout_seconds,
         )

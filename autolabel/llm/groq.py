@@ -29,7 +29,6 @@ class GroqProvider(BaseLLMProvider):
         system: str = "",
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        request_timeout_seconds: float | None = None,
     ) -> LLMResponse:
         messages: list[dict[str, str]] = []
         if system:
@@ -41,7 +40,6 @@ class GroqProvider(BaseLLMProvider):
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
-            timeout=request_timeout_seconds,
         )
 
         text = response.choices[0].message.content or ""

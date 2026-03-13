@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 from typing import Any
 
 from autolabel.benchmark.baselines import BaselineRunner
@@ -24,39 +23,23 @@ class BenchmarkRunner:
         self.config = config or AutoLabelConfig()
         self.display = ProgressDisplay()
 
-    def run(
-        self,
-        datasets: list[str],
-        max_iterations: int = 30,
-        llm_time_budget_minutes: float | None = None,
-        llm_request_timeout_seconds: float | None = None,
-    ) -> dict[str, Any]:
+    def run(self, datasets: list[str], max_iterations: int = 30) -> dict[str, Any]:
         """Run benchmark on all specified datasets."""
         all_results: dict[str, list[dict]] = {}
-        if llm_time_budget_minutes is not None and llm_request_timeout_seconds is None:
-            llm_request_timeout_seconds = 20.0
-        llm_deadline_s = None
-        if llm_time_budget_minutes is not None:
-            llm_deadline_s = time.monotonic() + (llm_time_budget_minutes * 60.0)
 
         for ds_name in datasets:
             if ds_name not in DATASET_LOADERS:
                 logger.warning("Unknown dataset '%s', skipping", ds_name)
                 continue
 
-            self.display.print_info(f"\n{'=' * 60}")
+            self.display.print_info(f"\n{'='*60}")
             self.display.print_info(f"Benchmarking: {ds_name}")
-            self.display.print_info(f"{'=' * 60}")
+            self.display.print_info(f"{'='*60}")
 
             dataset = DATASET_LOADERS[ds_name](self.config.datasets_dir)
 
             # Run baselines
-            baseline_runner = BaselineRunner(
-                dataset,
-                provider=self.provider,
-                llm_deadline_s=llm_deadline_s,
-                llm_request_timeout_seconds=llm_request_timeout_seconds,
-            )
+            baseline_runner = BaselineRunner(dataset, provider=self.provider)
             results = baseline_runner.run_all()
 
             # Run AutoLabel
@@ -68,14 +51,12 @@ class BenchmarkRunner:
             )
             loop.run(max_iterations)
             test_result = loop.evaluate_test()
-            results.append(
-                {
-                    "method": "AutoLabel",
-                    "f1": test_result["f1"],
-                    "accuracy": test_result["accuracy"],
-                    "coverage": test_result["coverage"],
-                }
-            )
+            results.append({
+                "method": "AutoLabel",
+                "f1": test_result["f1"],
+                "accuracy": test_result["accuracy"],
+                "coverage": test_result["coverage"],
+            })
 
             all_results[ds_name] = results
             self.display.print_benchmark_table(results)

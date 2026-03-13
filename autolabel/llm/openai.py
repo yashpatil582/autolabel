@@ -26,7 +26,6 @@ class OpenAIProvider(BaseLLMProvider):
         system: str = "",
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        request_timeout_seconds: float | None = None,
     ) -> LLMResponse:
         """Generate a completion via the OpenAI Chat Completions API.
 
@@ -49,7 +48,6 @@ class OpenAIProvider(BaseLLMProvider):
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
-            timeout=request_timeout_seconds,
         )
 
         choice = response.choices[0]
