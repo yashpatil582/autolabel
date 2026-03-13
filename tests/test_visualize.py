@@ -229,8 +229,13 @@ def test_plot_functions_create_pngs(mock_experiment_dir: Path, tmp_path: Path, f
 
 
 def test_generate_all_charts_skips_baseline_without_results(
-    mock_experiment_dir: Path, tmp_path: Path
+    mock_experiment_dir: Path, tmp_path: Path, monkeypatch
 ):
+    # Prevent auto-discovery from finding a real benchmark/results.json on disk
+    monkeypatch.setattr(
+        "autolabel.benchmark.visualize._benchmark_candidates",
+        lambda experiment_dir: [experiment_dir.parent / "benchmark" / "results.json"],
+    )
     output_dir = tmp_path / "charts"
     created, skipped = generate_all_charts(mock_experiment_dir, output_dir=output_dir)
 
