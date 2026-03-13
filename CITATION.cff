@@ -5,8 +5,8 @@ type: software
 authors:
   - family-names: Patil
     given-names: Yash
-repository-code: "https://github.com/yashpatil582/autolabel"
-url: "https://github.com/yashpatil582/autolabel"
+repository-code: "https://github.com/yashpatil/autolabel"
+url: "https://github.com/yashpatil/autolabel"
 license: MIT
 version: 1.0.0
 date-released: 2026-03-13

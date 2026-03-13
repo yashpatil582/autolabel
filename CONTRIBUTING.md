@@ -5,7 +5,7 @@ Thank you for your interest in contributing!
 ## Development Setup
 
 ```bash
-git clone https://github.com/yashpatil582/autolabel.git
+git clone https://github.com/yashpatil/autolabel.git
 cd autolabel
 pip install -e ".[dev]"
 ```

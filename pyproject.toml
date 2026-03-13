@@ -59,9 +59,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yashpatil582/autolabel"
-Repository = "https://github.com/yashpatil582/autolabel"
-Issues = "https://github.com/yashpatil582/autolabel/issues"
+Homepage = "https://github.com/yashpatil/autolabel"
+Repository = "https://github.com/yashpatil/autolabel"
+Issues = "https://github.com/yashpatil/autolabel/issues"
 
 [project.scripts]
 autolabel = "autolabel.cli:cli"
