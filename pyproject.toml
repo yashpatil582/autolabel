@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autolabel-ai"
+version = "1.0.0"
+description = "Autonomous self-improving data labeling system — LLM-powered weak supervision with Karpathy-style ratchet"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "Yash Patil" }]
+keywords = [
+    "weak-supervision",
+    "data-labeling",
+    "labeling-functions",
+    "snorkel",
+    "llm",
+    "autonomous",
+    "nlp",
+    "machine-learning",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scikit-learn>=1.3",
+    "anthropic>=0.39",
+    "openai>=1.0",
+    "groq>=0.4",
+    "ollama>=0.3",
+    "click>=8.1",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "python-dotenv>=1.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+datasets = ["datasets>=2.14"]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.1",
+    "datasets>=2.14",
+]
+
+[project.urls]
+Homepage = "https://github.com/yashpatil/autolabel"
+Repository = "https://github.com/yashpatil/autolabel"
+Issues = "https://github.com/yashpatil/autolabel/issues"
+
+[project.scripts]
+autolabel = "autolabel.cli:cli"
+
+[tool.setuptools.packages.find]
+include = ["autolabel*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
