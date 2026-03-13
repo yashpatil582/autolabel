@@ -19,10 +19,26 @@
       "coverage": 1.0
     },
     {
+      "method": "Zero-shot LLM",
+      "f1": null,
+      "accuracy": null,
+      "coverage": null,
+      "status": "timed_out",
+      "note": "294/500 samples before budget exhausted (Groq free tier)"
+    },
+    {
+      "method": "Few-shot LLM",
+      "f1": null,
+      "accuracy": null,
+      "coverage": null,
+      "status": "skipped",
+      "note": "Budget exhausted by zero-shot baseline"
+    },
+    {
       "method": "AutoLabel",
-      "f1": 0.656,
-      "accuracy": 0.703862660944206,
-      "coverage": 0.932
+      "f1": 0.780,
+      "accuracy": 0.8351,
+      "coverage": 0.934
     }
   ]
 }

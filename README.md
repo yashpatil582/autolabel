@@ -19,14 +19,14 @@ Project status: beta research system focused on automated LF authoring, reproduc
 
 ## Measured Result
 
-Measured on `airline_tweets` entity extraction with a 40-iteration autonomous run.
+Measured on `airline_tweets` entity extraction with a 30-iteration autonomous run.
 
 | Method | Test F1 | Setting |
 |--------|---------|---------|
 | Random baseline | 0.096 | Label-space random guess |
 | Majority class | 0.086 | Predict most frequent train label |
 | TF-IDF + LogReg | 0.784 | Supervised baseline trained on the labeled train split |
-| **AutoLabel** (`llama-3.1-8b-instant`, 40 iters) | **0.656** | Autonomous LF generation + weak-supervision aggregation |
+| **AutoLabel** (`llama-3.1-8b-instant`, 30 iters) | **0.780** | Autonomous LF generation + weak-supervision aggregation |
 
 Committed proof artifacts:
 
