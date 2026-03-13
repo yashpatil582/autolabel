@@ -26,6 +26,7 @@ class AnthropicProvider(BaseLLMProvider):
         system: str = "",
         temperature: float = 0.7,
         max_tokens: int = 4096,
+        request_timeout_seconds: float | None = None,
     ) -> LLMResponse:
         """Generate a completion via the Anthropic Messages API.
 
@@ -43,6 +44,7 @@ class AnthropicProvider(BaseLLMProvider):
             "max_tokens": max_tokens,
             "temperature": temperature,
             "messages": [{"role": "user", "content": prompt}],
+            "timeout": request_timeout_seconds,
         }
         if system:
             kwargs["system"] = system

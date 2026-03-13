@@ -84,14 +84,34 @@ class ProgressDisplay:
     def print_benchmark_table(self, rows: list[dict]) -> None:
         table = Table(title="Benchmark Results")
         table.add_column("Method", style="cyan")
+        table.add_column("Status")
         table.add_column("F1", justify="right")
         table.add_column("Accuracy", justify="right")
         table.add_column("Coverage", justify="right")
         for row in rows:
+            status = self._format_benchmark_status(row)
             table.add_row(
                 row["method"],
-                f"{row['f1']:.4f}",
-                f"{row.get('accuracy', 0):.4f}",
-                f"{row.get('coverage', 1.0):.1%}",
+                status,
+                self._format_benchmark_metric(row.get("f1"), ".4f"),
+                self._format_benchmark_metric(row.get("accuracy"), ".4f"),
+                self._format_benchmark_metric(row.get("coverage"), ".1%"),
             )
         self.console.print(table)
+
+    @staticmethod
+    def _format_benchmark_metric(value: float | None, fmt: str) -> str:
+        if value is None:
+            return "—"
+        return format(value, fmt)
+
+    @staticmethod
+    def _format_benchmark_status(row: dict) -> str:
+        status = row.get("status")
+        if status is None:
+            return "completed"
+        if status == "timed_out":
+            return f"TIMEOUT ({row.get('evaluated_examples', 0)}/{row.get('total_examples', '?')})"
+        if status == "skipped_budget":
+            return "SKIPPED (budget exhausted)"
+        return str(status)

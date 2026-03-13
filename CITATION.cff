@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: AutoLabel
+message: "If you use AutoLabel in research, please cite this software."
+type: software
+authors:
+  - family-names: Patil
+    given-names: Yash
+repository-code: "https://github.com/yashpatil/autolabel"
+url: "https://github.com/yashpatil/autolabel"
+license: MIT
+version: 1.0.0
+date-released: 2026-03-13
+abstract: >-
+  AutoLabel is an autonomous weak-supervision system that uses an LLM to
+  generate, validate, and iteratively improve labeling functions with an
+  inspectable keep/discard optimization loop.
+keywords:
+  - weak supervision
+  - labeling functions
+  - llm
+  - autonomous systems
+  - text classification
