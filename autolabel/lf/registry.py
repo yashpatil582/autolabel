@@ -62,9 +62,7 @@ class LFRegistry:
             KeyError: If no active LF with the given name exists.
         """
         if lf_name not in self._name_index:
-            raise KeyError(
-                f"No active LF named '{lf_name}' found in the registry"
-            )
+            raise KeyError(f"No active LF named '{lf_name}' found in the registry")
 
         lf = self._name_index.pop(lf_name)
         self.active_lfs.remove(lf)
@@ -94,12 +92,8 @@ class LFRegistry:
         strategy_counts: dict[str, int] = {}
         label_counts: dict[str, int] = {}
         for lf in self.active_lfs:
-            strategy_counts[lf.strategy] = (
-                strategy_counts.get(lf.strategy, 0) + 1
-            )
-            label_counts[lf.target_label] = (
-                label_counts.get(lf.target_label, 0) + 1
-            )
+            strategy_counts[lf.strategy] = strategy_counts.get(lf.strategy, 0) + 1
+            label_counts[lf.target_label] = label_counts.get(lf.target_label, 0) + 1
 
         return {
             "total_active": len(self.active_lfs),
@@ -116,7 +110,4 @@ class LFRegistry:
         return len(self.active_lfs)
 
     def __repr__(self) -> str:
-        return (
-            f"LFRegistry(active={len(self.active_lfs)}, "
-            f"retired={len(self.retired_lfs)})"
-        )
+        return f"LFRegistry(active={len(self.active_lfs)}, retired={len(self.retired_lfs)})"

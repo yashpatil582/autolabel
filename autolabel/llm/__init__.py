@@ -40,9 +40,7 @@ def get_provider(
     name_lower = name.lower().strip()
     if name_lower not in _PROVIDERS:
         available = ", ".join(sorted(_PROVIDERS))
-        raise ValueError(
-            f"Unknown provider '{name}'. Available providers: {available}"
-        )
+        raise ValueError(f"Unknown provider '{name}'. Available providers: {available}")
     return _PROVIDERS[name_lower](model=model, api_key=api_key)
 
 

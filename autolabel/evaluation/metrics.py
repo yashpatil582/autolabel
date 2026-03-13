@@ -48,10 +48,14 @@ def compute_f1(
     if not true_encoded:
         return 0.0
 
-    return float(f1_score(
-        np.array(true_encoded), np.array(pred_encoded),
-        average="micro", zero_division=0,
-    ))
+    return float(
+        f1_score(
+            np.array(true_encoded),
+            np.array(pred_encoded),
+            average="micro",
+            zero_division=0,
+        )
+    )
 
 
 def compute_accuracy(y_true: list[str], y_pred: list[str]) -> float:

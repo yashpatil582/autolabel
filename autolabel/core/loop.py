@@ -54,13 +54,17 @@ class AutonomousLoop:
 
         self.registry = LFRegistry()
         self.generator = LFGenerator(
-            provider, dataset.label_space, dataset.task_description,
+            provider,
+            dataset.label_space,
+            dataset.task_description,
             max_lf_lines=self.config.max_lf_lines,
             language=self.config.language,
             small_model_mode=self.config.small_model_mode,
         )
         self.strategy_selector = StrategySelector(
-            provider, dataset.label_space, dataset.task_description,
+            provider,
+            dataset.label_space,
+            dataset.task_description,
             language=self.config.language,
         )
         self.evaluator = Evaluator(dataset)
@@ -92,20 +96,22 @@ class AutonomousLoop:
             max_iter=max_iter,
         )
 
-        self.logger.log_meta({
-            "dataset": self.dataset.name,
-            "task": self.dataset.task_description,
-            "label_space": self.dataset.label_space,
-            "provider": type(self.provider).__name__,
-            "max_iterations": max_iter,
-            "label_model": self.label_model_type,
-            "language": self.config.language,
-            "small_model_mode": self.config.small_model_mode,
-            "config": {
-                "min_improvement": self.config.min_improvement,
-                "lfs_per_iteration": self.config.lfs_per_iteration,
-            },
-        })
+        self.logger.log_meta(
+            {
+                "dataset": self.dataset.name,
+                "task": self.dataset.task_description,
+                "label_space": self.dataset.label_space,
+                "provider": type(self.provider).__name__,
+                "max_iterations": max_iter,
+                "label_model": self.label_model_type,
+                "language": self.config.language,
+                "small_model_mode": self.config.small_model_mode,
+                "config": {
+                    "min_improvement": self.config.min_improvement,
+                    "lfs_per_iteration": self.config.lfs_per_iteration,
+                },
+            }
+        )
 
         # Warmup phase: generate simple LFs for each label
         if self.config.warmup or self.config.small_model_mode:
@@ -273,7 +279,10 @@ class AutonomousLoop:
         kept = self.ratchet.should_keep(f1_before, f1_after)
         logger.info(
             "Iter %d: candidate F1=%.4f (before=%.4f, delta=%+.4f) -> %s",
-            iteration, f1_after, f1_before, f1_after - f1_before,
+            iteration,
+            f1_after,
+            f1_before,
+            f1_after - f1_before,
             "KEEP" if kept else "DISCARD",
         )
 
@@ -365,10 +374,7 @@ class AutonomousLoop:
             if total == 0:
                 coverage[label] = 0.0
                 continue
-            correct = sum(
-                1 for i, m in enumerate(mask)
-                if m and pred_indices[i] == label_idx
-            )
+            correct = sum(1 for i, m in enumerate(mask) if m and pred_indices[i] == label_idx)
             coverage[label] = correct / total
 
         return coverage
@@ -376,7 +382,8 @@ class AutonomousLoop:
     def _get_examples_for_label(self, label: str, n: int = 10) -> list[str]:
         """Get example texts from training set for a given label."""
         examples = [
-            text for text, lbl in zip(self.dataset.train_texts, self.dataset.train_labels)
+            text
+            for text, lbl in zip(self.dataset.train_texts, self.dataset.train_labels)
             if lbl == label
         ]
         if len(examples) > n:

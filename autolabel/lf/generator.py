@@ -19,9 +19,7 @@ from autolabel.lf.templates import (
 logger = logging.getLogger(__name__)
 
 # Regex to extract fenced Python code blocks from LLM output
-_CODE_FENCE_RE = re.compile(
-    r"```(?:python)?\s*\n(.*?)```", re.DOTALL
-)
+_CODE_FENCE_RE = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL)
 
 
 class LFGenerator:
@@ -85,8 +83,7 @@ class LFGenerator:
         """
         if strategy not in STRATEGY_TEMPLATES:
             raise ValueError(
-                f"Unknown strategy '{strategy}'. "
-                f"Available: {sorted(STRATEGY_TEMPLATES)}"
+                f"Unknown strategy '{strategy}'. Available: {sorted(STRATEGY_TEMPLATES)}"
             )
 
         # Small model mode overrides
@@ -158,9 +155,7 @@ class LFGenerator:
                     source, max_lines=effective_max_lines
                 )
                 if not ok:
-                    logger.warning(
-                        "Skipping %s – validation failed: %s", fn_name, reason
-                    )
+                    logger.warning("Skipping %s – validation failed: %s", fn_name, reason)
                     continue
 
                 lf = LabelingFunction(
@@ -176,9 +171,7 @@ class LFGenerator:
                 try:
                     lf.compile()
                 except Exception as exc:
-                    logger.warning(
-                        "Skipping %s – compilation failed: %s", fn_name, exc
-                    )
+                    logger.warning("Skipping %s – compilation failed: %s", fn_name, exc)
                     continue
 
                 valid_lfs.append(lf)
@@ -208,27 +201,21 @@ class LFGenerator:
         template = STRATEGY_TEMPLATES[strategy]
 
         # Format examples as a numbered list
-        examples_str = "\n".join(
-            f"  {i + 1}. {ex}" for i, ex in enumerate(examples)
-        )
+        examples_str = "\n".join(f"  {i + 1}. {ex}" for i, ex in enumerate(examples))
 
         # Failure examples section
         if failure_examples:
             failure_section = (
                 "The following texts were MISCLASSIFIED by existing LFs. "
                 "Write new LFs that handle these correctly:\n"
-                + "\n".join(
-                    f"  - {ex}" for ex in failure_examples
-                )
+                + "\n".join(f"  - {ex}" for ex in failure_examples)
             )
         else:
             failure_section = ""
 
         # Existing LF descriptions
         if existing_lf_descriptions:
-            existing_lfs_str = "\n".join(
-                f"  - {desc}" for desc in existing_lf_descriptions
-            )
+            existing_lfs_str = "\n".join(f"  - {desc}" for desc in existing_lf_descriptions)
         else:
             existing_lfs_str = "  (none yet)"
 

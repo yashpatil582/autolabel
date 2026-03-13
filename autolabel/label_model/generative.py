@@ -27,7 +27,7 @@ class GenerativeLabelModel(BaseLabelModel):
         # Filled after fit()
         self.num_classes_: int = 0
         self.n_lfs_: int = 0
-        self.mu_: np.ndarray | None = None       # (n_lfs, C, C)
+        self.mu_: np.ndarray | None = None  # (n_lfs, C, C)
         self.class_prior_: np.ndarray | None = None  # (C,)
 
     def fit(self, label_matrix: np.ndarray, num_classes: int) -> GenerativeLabelModel:

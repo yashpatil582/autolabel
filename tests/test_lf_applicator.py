@@ -11,8 +11,12 @@ def _make_lf(name: str, keyword: str, label: str) -> LabelingFunction:
     return None
 '''
     return LabelingFunction(
-        name=name, source=source, strategy="keyword",
-        description=f"Detects {keyword}", target_label=label, iteration=0,
+        name=name,
+        source=source,
+        strategy="keyword",
+        description=f"Detects {keyword}",
+        target_label=label,
+        iteration=0,
     )
 
 

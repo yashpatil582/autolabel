@@ -153,9 +153,7 @@ class SandboxedExecutor:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def validate_source(
-        source: str, max_lines: int = 50
-    ) -> tuple[bool, str]:
+    def validate_source(source: str, max_lines: int = 50) -> tuple[bool, str]:
         """Validate *source* against the AST whitelist.
 
         Returns:
@@ -233,9 +231,7 @@ class SandboxedExecutor:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def execute_safe(
-        lf: LabelingFunction, text: str, timeout: int = 10
-    ) -> str:
+    def execute_safe(lf: LabelingFunction, text: str, timeout: int = 10) -> str:
         """Execute *lf* on *text* with a signal-based timeout.
 
         Returns:

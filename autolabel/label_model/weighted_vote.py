@@ -23,9 +23,7 @@ class WeightedVoteLabelModel(BaseLabelModel):
     # API
     # ------------------------------------------------------------------
 
-    def fit(
-        self, label_matrix: np.ndarray, num_classes: int
-    ) -> WeightedVoteLabelModel:
+    def fit(self, label_matrix: np.ndarray, num_classes: int) -> WeightedVoteLabelModel:
         """Compute per-LF accuracy weights from the label matrix."""
         self.num_classes_ = num_classes
         n_samples, n_lfs = label_matrix.shape
@@ -39,8 +37,8 @@ class WeightedVoteLabelModel(BaseLabelModel):
 
             # Majority vote of the *other* LFs for the active rows
             other_cols = np.delete(label_matrix, j, axis=1)  # (n, n_lfs-1)
-            active_other = other_cols[active_mask]            # (n_active, n_lfs-1)
-            active_labels_j = label_matrix[active_mask, j]    # (n_active,)
+            active_other = other_cols[active_mask]  # (n_active, n_lfs-1)
+            active_labels_j = label_matrix[active_mask, j]  # (n_active,)
 
             majority_others = self._majority_of(active_other, num_classes)  # (n_active,)
 

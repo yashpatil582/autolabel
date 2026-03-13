@@ -32,9 +32,7 @@ class LabelingFunction:
     target_label: str
     iteration: int
 
-    _compiled_fn: Callable[[str], str | None] | None = field(
-        default=None, repr=False
-    )
+    _compiled_fn: Callable[[str], str | None] | None = field(default=None, repr=False)
 
     def compile(self) -> None:
         """Compile *source* into a callable function.
@@ -50,18 +48,12 @@ class LabelingFunction:
         namespace: dict = {"re": __import__("re"), "ABSTAIN": ABSTAIN}
         exec(self.source, namespace)  # noqa: S102 – validated before reaching here
         for v in namespace.values():
-            if (
-                callable(v)
-                and not isinstance(v, type)
-                and getattr(v, "__name__", "") != ""
-            ):
+            if callable(v) and not isinstance(v, type) and getattr(v, "__name__", "") != "":
                 if v.__name__.startswith("lf_"):
                     self._compiled_fn = v
                     break
         if self._compiled_fn is None:
-            raise ValueError(
-                f"No lf_* function found in source for {self.name}"
-            )
+            raise ValueError(f"No lf_* function found in source for {self.name}")
 
     def apply(self, text: str) -> str:
         """Apply this labeling function to *text*.

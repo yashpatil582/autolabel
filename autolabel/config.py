@@ -11,7 +11,9 @@ class AutoLabelConfig(BaseSettings):
     model_config = {"env_prefix": "AUTOLABEL_", "env_file": ".env", "extra": "ignore"}
 
     # LLM provider
-    default_provider: str = Field("anthropic", description="LLM provider: anthropic, openai, ollama")
+    default_provider: str = Field(
+        "anthropic", description="LLM provider: anthropic, openai, ollama"
+    )
     default_model: str = Field("claude-sonnet-4-20250514", description="Model name")
     anthropic_api_key: str = Field("", alias="ANTHROPIC_API_KEY")
     openai_api_key: str = Field("", alias="OPENAI_API_KEY")
@@ -40,7 +42,9 @@ class AutoLabelConfig(BaseSettings):
 
     # Paths
     project_root: Path = Field(default_factory=lambda: Path(__file__).parent.parent)
-    experiments_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent / "experiments")
+    experiments_dir: Path = Field(
+        default_factory=lambda: Path(__file__).parent.parent / "experiments"
+    )
     datasets_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent / "datasets")
 
     def get_experiments_dir(self, run_name: str) -> Path:

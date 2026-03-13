@@ -111,20 +111,20 @@ def lf_regex_devanagari_01(text: str):
 
 class TestAutoFixImports:
     def test_auto_fix_adds_import_re(self):
-        source = '''def lf_regex_test_01(text: str):
+        source = """def lf_regex_test_01(text: str):
     if re.search(r"hello", text):
         return "Test"
     return None
-'''
+"""
         fixed = LFGenerator._auto_fix_imports(source)
         assert fixed.startswith("import re\n")
 
     def test_auto_fix_no_change_when_present(self):
-        source = '''import re
+        source = """import re
 def lf_regex_test_01(text: str):
     if re.search(r"hello", text):
         return "Test"
     return None
-'''
+"""
         fixed = LFGenerator._auto_fix_imports(source)
         assert fixed == source

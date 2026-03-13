@@ -54,9 +54,7 @@ class Evaluator:
         elif split == "test":
             return self.dataset.test_labels
         else:
-            raise ValueError(
-                f"Unknown split {split!r}. Expected one of: 'train', 'dev', 'test'."
-            )
+            raise ValueError(f"Unknown split {split!r}. Expected one of: 'train', 'dev', 'test'.")
 
     def evaluate(
         self,

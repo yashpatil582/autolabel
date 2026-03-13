@@ -26,6 +26,7 @@ _SEED = 42
 # Helper: stratified three-way split
 # ---------------------------------------------------------------------------
 
+
 def _stratified_split(
     n: int,
     labels: list[str],
@@ -61,6 +62,7 @@ def _stratified_split(
 # ---------------------------------------------------------------------------
 # Local dataset loaders
 # ---------------------------------------------------------------------------
+
 
 def load_airline_tweets(data_dir: Path) -> AutoLabelDataset:
     """Load the airline-tweets dataset from a local JSONL file.
@@ -109,10 +111,12 @@ def load_airline_tweets(data_dir: Path) -> AutoLabelDataset:
 # HuggingFace dataset loaders
 # ---------------------------------------------------------------------------
 
+
 def _try_import_datasets():
     """Import the ``datasets`` library or raise a helpful error."""
     try:
         import datasets  # noqa: F811
+
         return datasets
     except ImportError:
         raise ImportError(
@@ -253,6 +257,7 @@ def load_trec(data_dir: Path) -> AutoLabelDataset:
 # ---------------------------------------------------------------------------
 # Multilingual dataset loaders
 # ---------------------------------------------------------------------------
+
 
 def load_hindi_headlines(data_dir: Path) -> AutoLabelDataset:
     """Load a Hindi news headline classification dataset from HuggingFace.

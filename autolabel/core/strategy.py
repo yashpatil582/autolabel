@@ -138,7 +138,10 @@ class StrategySelector:
             if target_label not in self.label_space:
                 # Try fuzzy match
                 for label in self.label_space:
-                    if target_label.lower() in label.lower() or label.lower() in target_label.lower():
+                    if (
+                        target_label.lower() in label.lower()
+                        or label.lower() in target_label.lower()
+                    ):
                         target_label = label
                         break
                 else:
@@ -147,8 +150,7 @@ class StrategySelector:
 
             # Force diversity: if same label failed 2+ times recently, pick a different one
             recent_labels = [
-                h.get("target_label") for h in recent_history[-3:]
-                if not h.get("kept", False)
+                h.get("target_label") for h in recent_history[-3:] if not h.get("kept", False)
             ]
             if recent_labels.count(target_label) >= 2:
                 logger.info("Forcing label diversity — '%s' failed recently", target_label)

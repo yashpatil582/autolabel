@@ -40,9 +40,7 @@ class LFApplicator:
             returned by ``lfs[j]`` on ``texts[i]``, or ``-1`` when the
             LF abstained or errored.
         """
-        label_to_idx: dict[str, int] = {
-            label: idx for idx, label in enumerate(label_space)
-        }
+        label_to_idx: dict[str, int] = {label: idx for idx, label in enumerate(label_space)}
 
         n_texts = len(texts)
         n_lfs = len(lfs)

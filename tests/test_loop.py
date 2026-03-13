@@ -23,7 +23,9 @@ def lf_keyword_delta_02(text: str):
 ```
 '''
 
-MOCK_STRATEGY_RESPONSE = '{"strategy": "keyword", "target_label": "Delta Air Lines", "reasoning": "Low coverage"}'
+MOCK_STRATEGY_RESPONSE = (
+    '{"strategy": "keyword", "target_label": "Delta Air Lines", "reasoning": "Low coverage"}'
+)
 
 
 class TestRatchet:
@@ -43,8 +45,16 @@ class TestRatchet:
 class TestStrategySelector:
     def test_all_strategies_valid(self):
         assert len(STRATEGIES) == 8
-        for s in ["keyword", "regex", "fuzzy", "semantic", "abbreviation",
-                   "negation", "context", "compositional"]:
+        for s in [
+            "keyword",
+            "regex",
+            "fuzzy",
+            "semantic",
+            "abbreviation",
+            "negation",
+            "context",
+            "compositional",
+        ]:
             assert s in STRATEGIES
 
     def test_fallback_on_bad_response(self, sample_dataset):
@@ -53,7 +63,9 @@ class TestStrategySelector:
             provider, sample_dataset.label_space, sample_dataset.task_description
         )
         strategy, label = selector.select(
-            current_f1=0.5, num_active_lfs=0, iteration=1,
+            current_f1=0.5,
+            num_active_lfs=0,
+            iteration=1,
             label_coverage={lbl: 0.0 for lbl in sample_dataset.label_space},
             recent_history=[],
         )
@@ -63,9 +75,7 @@ class TestStrategySelector:
 
 class TestAutonomousLoop:
     def test_loop_runs(self, sample_dataset):
-        provider = MockLLMProvider(
-            responses=[MOCK_STRATEGY_RESPONSE, MOCK_LF_RESPONSE] * 5
-        )
+        provider = MockLLMProvider(responses=[MOCK_STRATEGY_RESPONSE, MOCK_LF_RESPONSE] * 5)
         loop = AutonomousLoop(
             dataset=sample_dataset,
             provider=provider,

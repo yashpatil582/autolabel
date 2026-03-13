@@ -38,9 +38,7 @@ class LFAnalysis:
 
         # Encode ground-truth labels to integers for fast comparison
         self._label_to_int = {lbl: i for i, lbl in enumerate(label_space)}
-        self._encoded_labels = np.array(
-            [self._label_to_int[lbl] for lbl in labels], dtype=int
-        )
+        self._encoded_labels = np.array([self._label_to_int[lbl] for lbl in labels], dtype=int)
 
     # ------------------------------------------------------------------
     # Public API
@@ -80,7 +78,7 @@ class LFAnalysis:
             other_voted = np.zeros(self._n_examples, dtype=bool)
             for k in range(self._n_lfs):
                 if k != j:
-                    other_voted |= (self.label_matrix[:, k] != ABSTAIN)
+                    other_voted |= self.label_matrix[:, k] != ABSTAIN
             overlap_count = int((labelled_mask & other_voted).sum())
             overlap = overlap_count / self._n_examples if self._n_examples else 0.0
 
@@ -97,13 +95,15 @@ class LFAnalysis:
                                 break  # one conflict is enough for this example
             conflict = conflict_count / self._n_examples if self._n_examples else 0.0
 
-            stats.append({
-                "lf_index": j,
-                "coverage": coverage,
-                "accuracy": accuracy,
-                "overlap": overlap,
-                "conflict": conflict,
-            })
+            stats.append(
+                {
+                    "lf_index": j,
+                    "coverage": coverage,
+                    "accuracy": accuracy,
+                    "overlap": overlap,
+                    "conflict": conflict,
+                }
+            )
 
         return stats
 
@@ -111,7 +111,9 @@ class LFAnalysis:
         """Return a human-readable formatted table of per-LF statistics."""
         stats = self.per_lf_stats()
 
-        header = f"{'LF':>5s}  {'Coverage':>9s}  {'Accuracy':>9s}  {'Overlap':>9s}  {'Conflict':>9s}"
+        header = (
+            f"{'LF':>5s}  {'Coverage':>9s}  {'Accuracy':>9s}  {'Overlap':>9s}  {'Conflict':>9s}"
+        )
         separator = "-" * len(header)
         lines = [header, separator]
 
@@ -132,11 +134,7 @@ class LFAnalysis:
             avg_con = np.mean([s["conflict"] for s in stats])
             lines.append(separator)
             lines.append(
-                f"{'Mean':>5s}  "
-                f"{avg_cov:9.4f}  "
-                f"{avg_acc:9.4f}  "
-                f"{avg_ovl:9.4f}  "
-                f"{avg_con:9.4f}"
+                f"{'Mean':>5s}  {avg_cov:9.4f}  {avg_acc:9.4f}  {avg_ovl:9.4f}  {avg_con:9.4f}"
             )
 
         return "\n".join(lines)
