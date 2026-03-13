@@ -1,0 +1,27 @@
+{
+  "dataset": "airline_tweets",
+  "task": "Extract the airline mentioned in this tweet",
+  "label_space": [
+    "Air Canada",
+    "Air France",
+    "Alaska Airlines",
+    "American Airlines",
+    "British Airways",
+    "Delta Air Lines",
+    "Emirates",
+    "Frontier Airlines",
+    "Lufthansa",
+    "Qatar Airways",
+    "Singapore Airlines",
+    "Spirit Airlines",
+    "United Airlines"
+  ],
+  "provider": "GroqProvider",
+  "max_iterations": 40,
+  "label_model": "majority",
+  "config": {
+    "min_improvement": 0.001,
+    "lfs_per_iteration": 5
+  },
+  "start_time": 1773387862.850123
+}
