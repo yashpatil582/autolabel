@@ -192,3 +192,33 @@ STRATEGY_TEMPLATES: dict[str, str] = {
     "context": _BASE_TEMPLATE.replace("{strategy_instructions}", _CONTEXT_INSTRUCTIONS),
     "compositional": _BASE_TEMPLATE.replace("{strategy_instructions}", _COMPOSITIONAL_INSTRUCTIONS),
 }
+
+# ---------------------------------------------------------------------------
+# Refinement template for agentic self-debugging (Feature 2)
+# ---------------------------------------------------------------------------
+
+REFINEMENT_TEMPLATE: str = """\
+You previously wrote this labeling function:
+
+```python
+{prior_source}
+```
+
+It was tested and had these problems:
+{failure_report}
+
+Task description: {task_description}
+Target label: {target_label}
+Full label space: {label_space}
+
+Here are example texts that belong to the target label:
+{examples}
+
+Please rewrite the function to fix these issues. Be MORE PRECISE:
+- If the function is overly broad, add more specific conditions
+- If it's firing on the wrong texts, adjust the pattern matching
+- If it's too narrow, widen the criteria slightly while keeping precision
+
+Return the improved function in a ```python``` code fence.
+Keep the same function name and strategy, but fix the logic.
+"""

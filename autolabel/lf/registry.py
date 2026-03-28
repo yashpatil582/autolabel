@@ -23,6 +23,7 @@ class LFRegistry:
         self.active_lfs: list[LabelingFunction] = []
         self.retired_lfs: list[LabelingFunction] = []
         self._name_index: dict[str, LabelingFunction] = {}
+        self.scores: dict[str, object] = {}  # name -> LFScore
 
     # ------------------------------------------------------------------ #
     # Adding
@@ -101,6 +102,25 @@ class LFRegistry:
             "by_strategy": strategy_counts,
             "by_label": label_counts,
         }
+
+    # ------------------------------------------------------------------ #
+    # Pruning
+    # ------------------------------------------------------------------ #
+
+    def prune(self, names_to_prune: list[str]) -> int:
+        """Retire LFs by name and return the count pruned.
+
+        Uses :meth:`retire` internally for each name. Silently skips
+        names not found in the active pool.
+        """
+        pruned = 0
+        for name in names_to_prune:
+            try:
+                self.retire(name)
+                pruned += 1
+            except KeyError:
+                logger.debug("Prune: LF '%s' not found in active pool, skipping", name)
+        return pruned
 
     # ------------------------------------------------------------------ #
     # Dunder helpers

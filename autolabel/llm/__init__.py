@@ -5,12 +5,14 @@ from __future__ import annotations
 from autolabel.llm.anthropic import AnthropicProvider
 from autolabel.llm.base import BaseLLMProvider, LLMResponse
 from autolabel.llm.cost_tracker import CostEntry, CostTracker
+from autolabel.llm.gemini import GeminiProvider
 from autolabel.llm.groq import GroqProvider
 from autolabel.llm.ollama import OllamaProvider
 from autolabel.llm.openai import OpenAIProvider
 
 _PROVIDERS: dict[str, type[BaseLLMProvider]] = {
     "anthropic": AnthropicProvider,
+    "gemini": GeminiProvider,
     "groq": GroqProvider,
     "openai": OpenAIProvider,
     "ollama": OllamaProvider,
@@ -49,6 +51,7 @@ __all__ = [
     "BaseLLMProvider",
     "CostEntry",
     "CostTracker",
+    "GeminiProvider",
     "LLMResponse",
     "GroqProvider",
     "OllamaProvider",

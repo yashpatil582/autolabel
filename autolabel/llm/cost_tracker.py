@@ -41,6 +41,10 @@ class CostTracker:
         "gpt-4o-mini": (0.15, 0.60),
         "gpt-4-turbo": (10.00, 30.00),
         "gpt-3.5-turbo": (0.50, 1.50),
+        # Google Gemini (free tier models)
+        "gemini-2.0-flash": (0.0, 0.0),
+        "gemini-1.5-flash": (0.0, 0.0),
+        "gemini-1.5-pro": (1.25, 5.00),
         # Groq (free tier / very cheap)
         "llama-3.1-8b-instant": (0.05, 0.08),
         "llama-3.3-70b-versatile": (0.59, 0.79),

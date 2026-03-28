@@ -116,6 +116,50 @@ def compute_conflict_rate(label_matrix: np.ndarray) -> float:
     return conflicts / n
 
 
+def compute_pseudo_f1(
+    y_true: list[str],
+    y_pred: list[str | None],
+    label_space: list[str],
+    confidence: list[float],
+) -> float:
+    """Compute confidence-weighted micro-averaged F1 for pseudo-labels.
+
+    Examples with higher pseudo-label confidence contribute more to the score.
+    Falls back to standard F1 if all confidences are equal.
+    """
+    if not y_true or not confidence:
+        return 0.0
+
+    le = LabelEncoder()
+    le.fit(label_space + ["__WRONG__"])
+    valid_labels = set(label_space)
+    wrong_idx = le.transform(["__WRONG__"])[0]
+
+    weighted_correct = 0.0
+    weighted_total = 0.0
+
+    for yt, yp, conf in zip(y_true, y_pred, confidence):
+        is_abstain = yp is None or yp == "ABSTAIN"
+        weight = max(conf, 0.01)  # Floor to avoid zero weight
+
+        if is_abstain:
+            pred_idx = wrong_idx
+        elif yp in valid_labels:
+            pred_idx = le.transform([yp])[0]
+        else:
+            pred_idx = wrong_idx
+
+        true_idx = le.transform([yt])[0]
+        weighted_total += weight
+        if pred_idx == true_idx:
+            weighted_correct += weight
+
+    if weighted_total == 0:
+        return 0.0
+
+    return float(weighted_correct / weighted_total)
+
+
 def per_class_f1(
     y_true: list[str],
     y_pred: list[str | None],

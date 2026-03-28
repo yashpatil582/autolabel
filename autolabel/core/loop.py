@@ -10,7 +10,7 @@ from typing import Any
 
 from autolabel.config import AutoLabelConfig
 from autolabel.core.experiment import IterationResult
-from autolabel.core.ratchet import Ratchet
+from autolabel.core.ratchet import GranularRatchet
 from autolabel.core.strategy import StrategySelector
 from autolabel.data.dataset import AutoLabelDataset
 from autolabel.evaluation.evaluator import Evaluator
@@ -20,6 +20,7 @@ from autolabel.lf.applicator import LFApplicator
 from autolabel.lf.base import ABSTAIN, LabelingFunction
 from autolabel.lf.generator import LFGenerator
 from autolabel.lf.registry import LFRegistry
+from autolabel.lf.scorer import LFScorer
 from autolabel.logging.experiment_log import ExperimentLogger
 from autolabel.logging.progress import ProgressDisplay
 from autolabel.llm.cost_tracker import CostTracker
@@ -47,10 +48,13 @@ class AutonomousLoop:
         config: AutoLabelConfig | None = None,
         label_model_type: str = "majority",
         run_name: str | None = None,
+        zero_label: bool = False,
+        library_path: str = "",
     ) -> None:
         self.config = config or AutoLabelConfig()
         self.dataset = dataset
         self.provider = provider
+        self.zero_label = zero_label
 
         self.registry = LFRegistry()
         self.generator = LFGenerator(
@@ -61,16 +65,46 @@ class AutonomousLoop:
             language=self.config.language,
             small_model_mode=self.config.small_model_mode,
         )
+
+        # Feature 4: Meta-learner
+        self.meta_learner = None
+        if self.config.meta_learning:
+            from autolabel.core.meta import MetaLearner
+            from autolabel.core.strategy import STRATEGIES
+
+            self.meta_learner = MetaLearner(STRATEGIES)
+
         self.strategy_selector = StrategySelector(
             provider,
             dataset.label_space,
             dataset.task_description,
             language=self.config.language,
+            meta_learner=self.meta_learner,
         )
         self.evaluator = Evaluator(dataset)
-        self.ratchet = Ratchet(self.config.min_improvement)
+        self.ratchet = GranularRatchet(
+            self.config.min_improvement,
+            min_precision=self.config.min_lf_precision,
+        )
         self.label_model_type = label_model_type
         self.cost_tracker = CostTracker()
+
+        # Feature 1: Per-LF scorer
+        self.scorer = LFScorer(dataset.label_space)
+
+        # Feature 2: Agentic refiner
+        self.agent = None
+
+        # Feature 5: Ensemble label models
+        self.ensemble_label_models = self.config.ensemble_label_models
+
+        # Feature 6: LF Library
+        self.library = None
+        effective_lib_path = library_path or self.config.lf_library_path
+        if effective_lib_path:
+            from autolabel.lf.library import LFLibrary
+
+            self.library = LFLibrary(effective_lib_path)
 
         # Output directory
         if run_name is None:
@@ -82,6 +116,7 @@ class AutonomousLoop:
 
         # State
         self.best_f1 = 0.0
+        self.best_coverage = 0.0
         self.history: list[IterationResult] = []
         self.total_generated = 0
 
@@ -106,12 +141,38 @@ class AutonomousLoop:
                 "label_model": self.label_model_type,
                 "language": self.config.language,
                 "small_model_mode": self.config.small_model_mode,
+                "zero_label": self.zero_label,
                 "config": {
                     "min_improvement": self.config.min_improvement,
                     "lfs_per_iteration": self.config.lfs_per_iteration,
+                    "agent_max_turns": self.config.agent_max_turns,
+                    "ensemble_label_models": self.config.ensemble_label_models,
+                    "meta_learning": self.config.meta_learning,
                 },
             }
         )
+
+        # Feature 3: Zero-label bootstrap
+        if self.zero_label and not self.dataset.has_labels:
+            self._run_bootstrap()
+
+        # Feature 6: Seed from LF library
+        if self.library is not None:
+            self._seed_from_library()
+
+        # Initialize agentic refiner (Feature 2) — needs dataset labels
+        if self.dataset.dev_texts and self.dataset.dev_labels:
+            from autolabel.core.agent import AgenticRefiner
+
+            self.agent = AgenticRefiner(
+                generator=self.generator,
+                provider=self.provider,
+                label_space=self.dataset.label_space,
+                dev_texts=self.dataset.dev_texts,
+                dev_labels=self.dataset.dev_labels,
+                max_turns=self.config.agent_max_turns,
+                min_precision=self.config.agent_min_precision,
+            )
 
         # Warmup phase: generate simple LFs for each label
         if self.config.warmup or self.config.small_model_mode:
@@ -122,6 +183,14 @@ class AutonomousLoop:
                 result = self._run_iteration(iteration)
                 self.history.append(result)
                 self.logger.log_iteration(iteration, result.to_dict())
+
+                # Feature 1: Periodic pruning
+                if (
+                    iteration % self.config.prune_interval == 0
+                    and len(self.registry.active_lfs) > 3
+                ):
+                    self._prune_lfs()
+
             except Exception as e:
                 logger.error("Iteration %d failed: %s", iteration, e, exc_info=True)
                 self.display.print_error(f"Iteration {iteration} failed: {e}")
@@ -142,16 +211,75 @@ class AutonomousLoop:
                 )
                 self.history.append(result)
 
+        # Feature 6: Save high-scoring LFs to library
+        if self.library is not None:
+            self._save_to_library()
+
         # Final summary
         self._log_final_summary()
         return self.history
 
-    def _run_warmup(self) -> None:
-        """Generate simple keyword and regex LFs for each label before the main loop.
+    def _run_bootstrap(self) -> None:
+        """Run zero-label bootstrap to generate pseudo-labels."""
+        from autolabel.core.bootstrap import ZeroLabelBootstrap
 
-        This ensures every class has basic coverage, which is especially
-        important for small models that may struggle with cold-start.
-        """
+        self.display.print_info("Running zero-label bootstrap...")
+        bootstrapper = ZeroLabelBootstrap(
+            provider=self.provider,
+            label_space=self.dataset.label_space,
+            task_description=self.dataset.task_description,
+            sample_size=self.config.bootstrap_sample_size,
+            consistency_k=self.config.bootstrap_consistency_k,
+            confidence_threshold=self.config.bootstrap_confidence_threshold,
+        )
+        bootstrapper.generate_pseudo_labels(self.dataset)
+
+        n_confident = sum(
+            1
+            for c in self.dataset.pseudo_confidence
+            if c >= self.config.bootstrap_confidence_threshold
+        )
+        self.display.print_info(
+            f"Bootstrap complete: {n_confident} high-confidence pseudo-labels generated"
+        )
+
+    def _seed_from_library(self) -> None:
+        """Seed the registry with adapted LFs from the library."""
+        if self.library is None or len(self.library) == 0:
+            return
+
+        candidates = self.library.find_transferable(
+            target_domain=self.dataset.name,
+            label_space=self.dataset.label_space,
+        )
+
+        if not candidates:
+            return
+
+        self.display.print_info(f"Found {len(candidates)} transferable LFs in library")
+
+        seeded = 0
+        for entry in candidates[:10]:  # Cap at 10 seed LFs
+            adapted = self.library.adapt_lf(
+                entry=entry,
+                provider=self.provider,
+                new_domain=self.dataset.name,
+                new_label_space=self.dataset.label_space,
+                task_description=self.dataset.task_description,
+            )
+            if adapted is not None:
+                self.registry.add(adapted)
+                seeded += 1
+
+        if seeded > 0:
+            # Evaluate seeded LFs
+            f1, coverage, _ = self._evaluate_lfs(self.registry.active_lfs, split="dev")
+            self.best_f1 = f1
+            self.best_coverage = coverage
+            self.display.print_info(f"Seeded {seeded} LFs from library, starting F1={f1:.4f}")
+
+    def _run_warmup(self) -> None:
+        """Generate simple keyword and regex LFs for each label before the main loop."""
         self.display.print_info("Running warmup phase...")
         warmup_strategies = ["keyword", "regex"]
 
@@ -217,6 +345,7 @@ class AutonomousLoop:
             label_coverage=label_coverage,
             recent_history=recent,
         )
+        reasoning = self.strategy_selector.last_reasoning
         self.display.print_iteration_start(iteration, strategy, target_label)
 
         # 3. Gather examples for the target label
@@ -224,20 +353,32 @@ class AutonomousLoop:
         failure_examples = self._get_failure_examples(target_label, n=5)
         existing_descriptions = [lf.description for lf in self.registry.active_lfs]
 
-        # 4. Generate new LFs
-        new_lfs = self.generator.generate(
-            strategy=strategy,
-            target_label=target_label,
-            examples=examples,
-            existing_lf_descriptions=existing_descriptions,
-            failure_examples=failure_examples,
-            num_lfs=self.config.lfs_per_iteration,
-            iteration=iteration,
-        )
+        # 4. Generate new LFs (Feature 2: use agent if available)
+        refinement_turns = 0
+        if self.agent is not None:
+            new_lfs = self.agent.generate_and_refine(
+                strategy=strategy,
+                target_label=target_label,
+                examples=examples,
+                existing_lf_descriptions=existing_descriptions,
+                failure_examples=failure_examples,
+                num_lfs=self.config.lfs_per_iteration,
+                iteration=iteration,
+            )
+            refinement_turns = self.agent.total_refinement_turns
+        else:
+            new_lfs = self.generator.generate(
+                strategy=strategy,
+                target_label=target_label,
+                examples=examples,
+                existing_lf_descriptions=existing_descriptions,
+                failure_examples=failure_examples,
+                num_lfs=self.config.lfs_per_iteration,
+                iteration=iteration,
+            )
         self.total_generated += len(new_lfs)
 
         # 4b. Precision filter: discard LFs that fire on too many examples
-        # (for N classes, an LF firing on >2/N of data is suspiciously broad)
         max_fire_rate = min(0.35, 3.0 / max(self.dataset.num_classes, 1))
         dev_texts = self.dataset.dev_texts
         filtered_lfs = []
@@ -269,36 +410,73 @@ class AutonomousLoop:
                 coverage=0.0,
                 accuracy=self.best_f1,
                 label_model_type=self.label_model_type,
+                reasoning=reasoning,
             )
 
-        # 5. Temporarily add new LFs and evaluate
-        candidate_lfs = self.registry.active_lfs + new_lfs
-        f1_after, coverage, accuracy = self._evaluate_lfs(candidate_lfs, split="dev")
+        # Feature 1: Per-LF granular scoring and greedy addition
+        def label_model_factory():
+            return get_label_model(self.label_model_type)
 
-        # 6. Keep or discard
-        kept = self.ratchet.should_keep(f1_before, f1_after)
-        logger.info(
-            "Iter %d: candidate F1=%.4f (before=%.4f, delta=%+.4f) -> %s",
-            iteration,
-            f1_after,
-            f1_before,
-            f1_after - f1_before,
-            "KEEP" if kept else "DISCARD",
+        scores = self.scorer.score_batch(
+            new_lfs,
+            self.dataset.dev_texts,
+            self.dataset.dev_labels,
+            self.registry.active_lfs + new_lfs,
+            label_model_factory,
+            self.dataset.num_classes,
         )
 
-        if kept:
-            self.registry.add_batch(new_lfs)
+        kept_lfs = self.ratchet.filter_batch(
+            candidate_lfs=new_lfs,
+            scores=scores,
+            current_f1=f1_before,
+            evaluate_fn=lambda lfs: self._evaluate_lfs(lfs, split="dev"),
+            active_lfs=self.registry.active_lfs,
+        )
+
+        # If granular ratchet kept nothing, fall back to batch evaluation
+        if not kept_lfs:
+            candidate_lfs = self.registry.active_lfs + new_lfs
+            f1_after, coverage, accuracy = self._evaluate_lfs(candidate_lfs, split="dev")
+
+            if self.ratchet.should_keep(f1_before, f1_after):
+                kept_lfs = new_lfs
+
+        # Evaluate final state
+        if kept_lfs:
+            final_lfs = self.registry.active_lfs + kept_lfs
+            f1_after, coverage, accuracy = self._evaluate_lfs(final_lfs, split="dev")
+            kept = True
+            self.registry.add_batch(kept_lfs)
             self.best_f1 = f1_after
+            self.best_coverage = coverage
+
+            # Store scores
+            for lf, score in zip(new_lfs, scores):
+                if lf in kept_lfs:
+                    self.registry.scores[lf.name] = score
         else:
-            # Discard — don't add to registry
             f1_after = f1_before
+            coverage = self.best_coverage
+            accuracy = self.best_f1
+            kept = False
+
+        # Feature 4: Update meta-learner
+        if self.meta_learner is not None:
+            self.meta_learner.update(
+                strategy=strategy,
+                iteration=iteration,
+                coverage=coverage,
+                kept=kept,
+                f1_delta=f1_after - f1_before if kept else 0.0,
+            )
 
         self.display.print_iteration_result(
             iteration=iteration,
             f1=f1_after if kept else f1_before,
             prev_f1=f1_before,
             kept=kept,
-            new_lfs=len(new_lfs),
+            new_lfs=len(kept_lfs) if kept else 0,
             total_lfs=len(self.registry.active_lfs),
             coverage=coverage,
         )
@@ -317,6 +495,9 @@ class AutonomousLoop:
             coverage=coverage,
             accuracy=accuracy if kept else self.best_f1,
             label_model_type=self.label_model_type,
+            refinement_turns=refinement_turns,
+            lfs_kept=len(kept_lfs) if kept else 0,
+            reasoning=reasoning,
         )
 
     def _evaluate_lfs(
@@ -331,24 +512,129 @@ class AutonomousLoop:
         # Apply all LFs
         label_matrix = LFApplicator.apply_lfs(lfs, texts, self.dataset.label_space)
 
-        # Fit label model and predict
+        # Feature 5: Ensemble label models — try all 3, pick best
+        if self.ensemble_label_models and split == "dev":
+            return self._evaluate_with_ensemble(label_matrix, split)
+
+        # Standard single label model
         label_model = get_label_model(self.label_model_type)
         label_model.fit(label_matrix, self.dataset.num_classes)
         pred_indices = label_model.predict(label_matrix)
 
-        # Convert indices back to labels
+        predictions = self._indices_to_labels(pred_indices)
+        result = self.evaluator.evaluate(predictions, split=split)
+        coverage = compute_coverage(predictions)
+
+        return result.f1, coverage, result.accuracy
+
+    def _evaluate_with_ensemble(
+        self, label_matrix: object, split: str
+    ) -> tuple[float, float, float]:
+        """Try all label models and return the best result."""
+        best_f1 = -1.0
+        best_result = (0.0, 0.0, 0.0)
+        best_model_type = self.label_model_type
+
+        for model_type in ["majority", "weighted", "generative"]:
+            try:
+                label_model = get_label_model(model_type)
+                label_model.fit(label_matrix, self.dataset.num_classes)
+                pred_indices = label_model.predict(label_matrix)
+
+                predictions = self._indices_to_labels(pred_indices)
+                result = self.evaluator.evaluate(predictions, split=split)
+                coverage = compute_coverage(predictions)
+
+                if result.f1 > best_f1:
+                    best_f1 = result.f1
+                    best_result = (result.f1, coverage, result.accuracy)
+                    best_model_type = model_type
+            except Exception:
+                continue
+
+        if best_model_type != self.label_model_type:
+            logger.info(
+                "Ensemble: switched from %s to %s (F1 %.4f)",
+                self.label_model_type,
+                best_model_type,
+                best_f1,
+            )
+            self.label_model_type = best_model_type
+
+        return best_result
+
+    def _indices_to_labels(self, pred_indices: object) -> list[str | None]:
+        """Convert label model prediction indices to label strings."""
         predictions: list[str | None] = []
         for idx in pred_indices:
             if idx == -1:
                 predictions.append(None)
             else:
                 predictions.append(self.dataset.label_space[idx])
+        return predictions
 
-        # Evaluate
-        result = self.evaluator.evaluate(predictions, split=split)
-        coverage = compute_coverage(predictions)
+    def _prune_lfs(self) -> None:
+        """Prune redundant and harmful LFs from the registry.
 
-        return result.f1, coverage, result.accuracy
+        Removes LFs with:
+        - Correlation > max_lf_correlation with any other active LF
+        - Marginal F1 delta <= 0 (removing them doesn't hurt)
+        """
+        if len(self.registry.active_lfs) <= 3:
+            return
+
+        def label_model_factory():
+            return get_label_model(self.label_model_type)
+
+        scores = self.scorer.score_batch(
+            self.registry.active_lfs,
+            self.dataset.dev_texts,
+            self.dataset.dev_labels,
+            self.registry.active_lfs,
+            label_model_factory,
+            self.dataset.num_classes,
+        )
+
+        to_prune = []
+        for lf, score in zip(self.registry.active_lfs, scores):
+            if score.correlation > self.config.max_lf_correlation:
+                to_prune.append(lf.name)
+                logger.info("Pruning %s: correlation %.2f", lf.name, score.correlation)
+            elif score.marginal_f1_delta <= 0 and score.precision < self.config.min_lf_precision:
+                to_prune.append(lf.name)
+                logger.info(
+                    "Pruning %s: marginal_f1=%.4f, precision=%.2f",
+                    lf.name,
+                    score.marginal_f1_delta,
+                    score.precision,
+                )
+
+        if to_prune:
+            pruned = self.registry.prune(to_prune)
+            # Re-evaluate after pruning
+            if self.registry.active_lfs:
+                f1, coverage, _ = self._evaluate_lfs(self.registry.active_lfs, split="dev")
+                self.best_f1 = f1
+                self.best_coverage = coverage
+            self.display.print_info(
+                f"Pruned {pruned} LFs, now {len(self.registry.active_lfs)} active"
+            )
+
+    def _save_to_library(self) -> None:
+        """Save high-scoring active LFs to the library."""
+        if self.library is None:
+            return
+
+        scores_dict = {}
+        for name, score in self.registry.scores.items():
+            scores_dict[name] = getattr(score, "composite_score", 0.0)
+
+        # Save LFs with composite score > 0.3
+        good_lfs = [lf for lf in self.registry.active_lfs if scores_dict.get(lf.name, 0.0) > 0.3]
+
+        if good_lfs:
+            saved = self.library.save(good_lfs, domain=self.dataset.name, scores=scores_dict)
+            self.display.print_info(f"Saved {saved} LFs to library")
 
     def _compute_label_coverage(self) -> dict[str, float]:
         """Compute per-label coverage on dev set."""
@@ -434,6 +720,7 @@ class AutonomousLoop:
             "total_generated": self.total_generated,
             "total_cost": self.cost_tracker.total_cost(),
             "f1_trajectory": [r.f1_after for r in self.history],
+            "zero_label": self.zero_label,
         }
         self.logger.log_final(summary)
 

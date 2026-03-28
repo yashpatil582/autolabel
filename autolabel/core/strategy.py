@@ -77,11 +77,14 @@ class StrategySelector:
         label_space: list[str],
         task_description: str,
         language: str = "en",
+        meta_learner: Any = None,
     ) -> None:
         self.provider = provider
         self.label_space = label_space
         self.task_description = task_description
         self.language = language
+        self.meta_learner = meta_learner
+        self.last_reasoning: str = ""
 
     def select(
         self,
@@ -130,6 +133,7 @@ class StrategySelector:
             result = json.loads(response.text.strip())
             strategy = result.get("strategy", "keyword")
             target_label = result.get("target_label", self.label_space[0])
+            self.last_reasoning = result.get("reasoning", "")
 
             # Validate
             if strategy not in STRATEGIES:
@@ -164,6 +168,14 @@ class StrategySelector:
             if recent_strategies.count(strategy) >= 2:
                 other = [s for s in STRATEGIES if s != strategy]
                 strategy = random.choice(other)
+
+            # Consult meta-learner if available
+            if self.meta_learner is not None:
+                suggested = self.meta_learner.suggest_strategy(current_f1, iteration)
+                if suggested is not None:
+                    # Blend: 50% chance to use meta-learner suggestion
+                    if random.random() < 0.5:
+                        strategy = suggested
 
             return strategy, target_label
 

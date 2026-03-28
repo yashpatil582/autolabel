@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 
 
@@ -23,6 +24,44 @@ class AutoLabelDataset:
     train_indices: list[int] = field(default_factory=list)
     dev_indices: list[int] = field(default_factory=list)
     test_indices: list[int] = field(default_factory=list)
+
+    # Zero-label bootstrap fields (Feature 3)
+    pseudo_labels: list[str] = field(default_factory=list)
+    pseudo_confidence: list[float] = field(default_factory=list)
+
+    @property
+    def has_labels(self) -> bool:
+        """True if the dataset has ground-truth labels (not pseudo-labels)."""
+        return bool(self.labels) and not bool(self.pseudo_labels)
+
+    @classmethod
+    def from_unlabeled(
+        cls,
+        texts: list[str],
+        label_space: list[str],
+        task_description: str,
+        name: str = "unlabeled",
+    ) -> "AutoLabelDataset":
+        """Create a dataset from unlabeled texts.
+
+        Labels are left empty; use :class:`ZeroLabelBootstrap` to populate them.
+        """
+        n = len(texts)
+        indices = list(range(n))
+        random.shuffle(indices)
+        train_end = int(n * 0.6)
+        dev_end = int(n * 0.8)
+
+        return cls(
+            name=name,
+            task_description=task_description,
+            label_space=label_space,
+            texts=texts,
+            labels=[""] * n,
+            train_indices=indices[:train_end],
+            dev_indices=indices[train_end:dev_end],
+            test_indices=indices[dev_end:],
+        )
 
     # -- convenience properties --------------------------------------------------
 

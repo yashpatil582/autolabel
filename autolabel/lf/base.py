@@ -32,6 +32,11 @@ class LabelingFunction:
     target_label: str
     iteration: int
 
+    # Optional fields for cross-dataset transfer (Feature 6)
+    domain: str = ""
+    abstract_pattern: str = ""
+    transferability_score: float = 0.0
+
     _compiled_fn: Callable[[str], str | None] | None = field(default=None, repr=False)
 
     def compile(self) -> None:

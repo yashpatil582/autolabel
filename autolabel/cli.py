@@ -37,6 +37,24 @@ def cli() -> None:
 @click.option(
     "--small-model", is_flag=True, default=False, help="Optimize for small models (8B and below)"
 )
+@click.option(
+    "--zero-label",
+    is_flag=True,
+    default=False,
+    help="Zero-label bootstrap mode (no labeled data needed)",
+)
+@click.option(
+    "--unlabeled-texts",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to plain text file with unlabeled texts (one per line), used with --zero-label",
+)
+@click.option(
+    "--library",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Path to LF library directory for cross-dataset transfer",
+)
 def run(
     dataset: str,
     task: str | None,
@@ -49,6 +67,9 @@ def run(
     run_name: str | None,
     language: str,
     small_model: bool,
+    zero_label: bool,
+    unlabeled_texts: Path | None,
+    library: Path | None,
 ) -> None:
     """Run the autonomous labeling loop."""
     from autolabel.data.loaders import DATASET_LOADERS
@@ -60,18 +81,37 @@ def run(
     config.min_improvement = min_improvement
     config.language = language
     config.small_model_mode = small_model
+    if library:
+        config.lf_library_path = str(library)
 
     # Load dataset
-    if dataset not in DATASET_LOADERS:
-        raise click.BadParameter(
-            f"Unknown dataset '{dataset}'. Available: {sorted(DATASET_LOADERS)}",
-            param_hint="--dataset",
+    if unlabeled_texts and zero_label:
+        # Load unlabeled texts for zero-label mode
+        from autolabel.data.loaders import load_unlabeled
+
+        if not labels:
+            raise click.BadParameter(
+                "Labels (--labels) are required when using --unlabeled-texts",
+                param_hint="--labels",
+            )
+        label_space = [lbl.strip() for lbl in labels.split(",")]
+        ds = load_unlabeled(
+            filepath=unlabeled_texts,
+            label_space=label_space,
+            task_description=task or "Classify the text",
+            name=dataset or "unlabeled",
         )
-    ds = DATASET_LOADERS[dataset](config.datasets_dir)
+    else:
+        if dataset not in DATASET_LOADERS:
+            raise click.BadParameter(
+                f"Unknown dataset '{dataset}'. Available: {sorted(DATASET_LOADERS)}",
+                param_hint="--dataset",
+            )
+        ds = DATASET_LOADERS[dataset](config.datasets_dir)
 
     if task:
         ds.task_description = task
-    if labels:
+    if labels and not unlabeled_texts:
         ds.label_space = [lbl.strip() for lbl in labels.split(",")]
 
     # Create provider
@@ -79,6 +119,7 @@ def run(
         "anthropic": config.anthropic_api_key,
         "openai": config.openai_api_key,
         "groq": config.groq_api_key,
+        "gemini": config.gemini_api_key,
     }
     llm = get_provider(
         name=provider,
@@ -93,6 +134,8 @@ def run(
         config=config,
         label_model_type=label_model,
         run_name=run_name,
+        zero_label=zero_label,
+        library_path=str(library) if library else "",
     )
     loop.run(max_iterations)
 
@@ -133,6 +176,7 @@ def benchmark(
         "anthropic": config.anthropic_api_key,
         "openai": config.openai_api_key,
         "groq": config.groq_api_key,
+        "gemini": config.gemini_api_key,
     }
     llm = get_provider(
         name=provider,

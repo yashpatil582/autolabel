@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
+import logging
 import os
+import time
 
 from openai import OpenAI
 
 from autolabel.llm.base import BaseLLMProvider, LLMResponse
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
 
 class GroqProvider(BaseLLMProvider):
-    """LLM provider backed by Groq's fast inference API."""
+    """LLM provider backed by Groq's fast inference API.
+
+    Includes automatic retry with exponential backoff for rate limit errors.
+    """
 
     def __init__(self, model: str = "", api_key: str = "") -> None:
         resolved_model = model or DEFAULT_MODEL
@@ -36,21 +43,36 @@ class GroqProvider(BaseLLMProvider):
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        response = self._client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=request_timeout_seconds,
-        )
+        # Retry with backoff on rate limit errors
+        max_retries = 3
+        for attempt in range(max_retries + 1):
+            try:
+                response = self._client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    timeout=request_timeout_seconds,
+                )
 
-        text = response.choices[0].message.content or ""
-        usage = response.usage
+                text = response.choices[0].message.content or ""
+                usage = response.usage
 
-        return LLMResponse(
-            text=text,
-            input_tokens=usage.prompt_tokens if usage else 0,
-            output_tokens=usage.completion_tokens if usage else 0,
-            model=self.model,
-            provider="groq",
-        )
+                return LLMResponse(
+                    text=text,
+                    input_tokens=usage.prompt_tokens if usage else 0,
+                    output_tokens=usage.completion_tokens if usage else 0,
+                    model=self.model,
+                    provider="groq",
+                )
+            except Exception as e:
+                error_str = str(e).lower()
+                is_rate_limit = "429" in error_str or "rate_limit" in error_str
+                # Don't retry daily token limits — they won't reset soon
+                is_daily = "tokens per day" in error_str or "tpd" in error_str
+                if is_rate_limit and not is_daily and attempt < max_retries:
+                    wait = 2**attempt  # 1s, 2s, 4s
+                    logger.info("Groq rate limited, retrying in %ds...", wait)
+                    time.sleep(wait)
+                    continue
+                raise

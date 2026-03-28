@@ -296,6 +296,39 @@ def load_marathi_headlines(data_dir: Path) -> AutoLabelDataset:
 
 
 # ---------------------------------------------------------------------------
+# Generic unlabeled loader (Feature 3)
+# ---------------------------------------------------------------------------
+
+
+def load_unlabeled(
+    filepath: Path,
+    label_space: list[str],
+    task_description: str,
+    name: str = "unlabeled",
+) -> AutoLabelDataset:
+    """Load unlabeled texts from a plain text file (one text per line).
+
+    Returns a dataset with empty labels, suitable for zero-label bootstrap.
+    """
+    if not filepath.exists():
+        raise FileNotFoundError(f"Unlabeled text file not found: {filepath}")
+
+    texts: list[str] = []
+    with open(filepath, "r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                texts.append(line)
+
+    return AutoLabelDataset.from_unlabeled(
+        texts=texts,
+        label_space=label_space,
+        task_description=task_description,
+        name=name,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 

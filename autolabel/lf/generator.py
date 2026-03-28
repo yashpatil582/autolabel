@@ -12,6 +12,7 @@ from autolabel.lf.sandbox import SandboxedExecutor
 from autolabel.lf.templates import (
     FEW_SHOT_EXAMPLES,
     LANGUAGE_SUPPLEMENTS,
+    REFINEMENT_TEMPLATE,
     STRATEGY_TEMPLATES,
     SYSTEM_PROMPT,
 )
@@ -183,6 +184,69 @@ class LFGenerator:
             "Returning %d valid LFs",
             len(valid_lfs),
         )
+        return valid_lfs
+
+    def generate_with_context(
+        self,
+        strategy: str,
+        target_label: str,
+        prior_source: str,
+        failure_report: str,
+        examples: list[str],
+        num_lfs: int = 1,
+        iteration: int = 0,
+    ) -> list[LabelingFunction]:
+        """Generate a refined LF given prior source and a failure report.
+
+        Used by :class:`AgenticRefiner` during multi-turn self-debugging.
+        """
+        examples_str = "\n".join(f"  {i + 1}. {ex}" for i, ex in enumerate(examples))
+
+        prompt = REFINEMENT_TEMPLATE.format(
+            prior_source=prior_source,
+            failure_report=failure_report,
+            task_description=self.task_description,
+            target_label=target_label,
+            label_space=", ".join(self.label_space),
+            examples=examples_str,
+        )
+
+        response = self.provider.generate(
+            prompt=prompt,
+            system=SYSTEM_PROMPT,
+            temperature=0.4,
+            max_tokens=2048,
+        )
+
+        raw_functions = self._parse_response(response.text)
+        valid_lfs: list[LabelingFunction] = []
+
+        for idx, source in enumerate(raw_functions[:num_lfs]):
+            source = self._auto_fix_imports(source)
+            fn_name = self._extract_function_name(source)
+            if fn_name is None:
+                continue
+
+            ok, reason = SandboxedExecutor.validate_source(source, max_lines=self.max_lf_lines)
+            if not ok:
+                continue
+
+            lf = LabelingFunction(
+                name=fn_name,
+                source=source,
+                strategy=strategy,
+                description=self._extract_docstring(source),
+                target_label=target_label,
+                iteration=iteration,
+            )
+
+            try:
+                lf.compile()
+            except Exception:
+                continue
+
+            valid_lfs.append(lf)
+
         return valid_lfs
 
     # ------------------------------------------------------------------ #

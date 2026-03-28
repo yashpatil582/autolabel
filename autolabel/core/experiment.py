@@ -24,6 +24,12 @@ class IterationResult:
     label_model_type: str = "generative"
     error: str | None = None
 
+    # v2.0 fields
+    refinement_turns: int = 0
+    lfs_kept: int = 0
+    lfs_pruned: int = 0
+    reasoning: str = ""
+
     def to_dict(self) -> dict:
         return {
             "iteration": self.iteration,
@@ -40,4 +46,8 @@ class IterationResult:
             "accuracy": self.accuracy,
             "label_model_type": self.label_model_type,
             "error": self.error,
+            "refinement_turns": self.refinement_turns,
+            "lfs_kept": self.lfs_kept,
+            "lfs_pruned": self.lfs_pruned,
+            "reasoning": self.reasoning,
         }
