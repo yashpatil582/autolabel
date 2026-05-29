@@ -54,6 +54,7 @@ dev = [
     "ruff>=0.1",
     "datasets>=2.14",
     "matplotlib>=3.7",
+    "google-generativeai>=0.7",
 ]
 
 [project.urls]

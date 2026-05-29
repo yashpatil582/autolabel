@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 import os
 
-import google.generativeai as genai
-
 from autolabel.llm.base import BaseLLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
@@ -23,6 +21,14 @@ class GeminiProvider(BaseLLMProvider):
     """
 
     def __init__(self, model: str = "", api_key: str = "") -> None:
+        try:
+            import google.generativeai  # noqa: F401
+        except ImportError as e:
+            raise ImportError(
+                "google-generativeai is required for GeminiProvider. "
+                "Install it with: pip install google-generativeai"
+            ) from e
+
         resolved_model = model or DEFAULT_MODEL
         raw_keys = api_key or os.environ.get("GEMINI_API_KEY", "")
         # Support comma-separated keys for rotation
@@ -48,6 +54,8 @@ class GeminiProvider(BaseLLMProvider):
         max_tokens: int = 4096,
         request_timeout_seconds: float | None = None,
     ) -> LLMResponse:
+        import google.generativeai as genai
+
         last_error = None
 
         # Try each key up to one full rotation
