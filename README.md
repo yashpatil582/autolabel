@@ -6,7 +6,7 @@
 
 **AutoLabel is an autonomous weak-supervision system that uses an LLM to generate, validate, and iteratively improve labeling functions — with zero-label bootstrap support.**
 
-It turns LF authoring into a self-improving optimization loop with per-LF granular scoring, agentic self-debugging, smart pruning, and inspectable Python rules. v2.0 introduces zero-label mode that achieves 0.810 test F1 without any labeled data.
+It turns LF authoring into a self-improving optimization loop with per-LF granular scoring, agentic self-debugging, smart pruning, and inspectable Python rules. v2.0 adds a zero-label bootstrap mode that can run without any labeled data.
 
 Project status: beta research system focused on automated LF authoring, reproducibility, and multilingual expansion.
 
@@ -26,13 +26,12 @@ Measured on `airline_tweets` entity extraction with 40-iteration autonomous runs
 | Random baseline | 0.096 | Label-space random guess |
 | Majority class | 0.086 | Predict most frequent train label |
 | TF-IDF + LogReg | 0.784 | Supervised baseline trained on the labeled train split |
-| **AutoLabel v2.0** (labeled) | **0.792** | Autonomous LF generation with per-LF scoring + pruning |
-| **AutoLabel v2.0** (zero-label) | **0.810** | Zero-label bootstrap: no labeled data at all |
+| **AutoLabel v2.0** | **0.656** | Autonomous LF generation with per-LF scoring + pruning (best dev F1 0.683) |
 
-Key v2.0 improvements over v1.0 (0.780):
+Key v2.0 changes over v1.0:
 - **Per-LF granular scoring** replaces binary batch keep/discard — only the best LFs are added
 - **Smart pruning** removes redundant and harmful LFs, consistently boosting F1
-- **Zero-label bootstrap** generates pseudo-labels via LLM self-consistency, achieving 0.810 test F1 with no labeled data
+- **Zero-label bootstrap** generates pseudo-labels via LLM self-consistency, for runs with no labeled data
 - **Agentic self-debugging** refines low-quality LFs through multi-turn failure analysis
 
 ## Proof
@@ -41,7 +40,7 @@ Key v2.0 improvements over v1.0 (0.780):
 
 ![F1 trajectory](docs/assets/proof-f1-trajectory.png)
 
-The granular ratchet steadily raises best dev F1 across 40 iterations, ending at `0.870` dev F1 and `0.792` test F1. Pruning at iterations 10 and 20 removes harmful LFs, boosting performance.
+The granular ratchet steadily raises best dev F1 across 40 iterations, ending at `0.683` dev F1 and `0.656` test F1. Pruning at iterations 10 and 20 removes harmful LFs, boosting performance.
 
 ### Measured Baseline Comparison
 
