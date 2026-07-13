@@ -197,7 +197,7 @@ ruff format --check autolabel/ tests/
 - Contributing guide: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Security policy: [SECURITY.md](SECURITY.md)
-- Release notes: [v2.0.0](docs/releases/v2.0.0.md) | [v1.0.0](docs/releases/v1.0.0.md)
+- Release notes: [v1.0.0](docs/releases/v1.0.0.md)
 
 ## References
 
